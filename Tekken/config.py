@@ -2,7 +2,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--dataroot', required=True, help='path to dataset')
+parser.add_argument('--dataroot', default='C:\\Users\msi\Desktop\Soohyun\프로그라피\\2기_디비디비딥\VideoData', help='path to dataset')
 
 parser.add_argument('--n_epochs', type=int, default=10, help='number of epochs')
 parser.add_argument('--log_interval', type=int, default=100, help='save valid gif and image')

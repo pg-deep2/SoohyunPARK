@@ -56,7 +56,6 @@ class RawVideoDataset(torch.utils.data.Dataset):
     def __getitem__(self, item):
         cap = cv2.VideoCapture(self.videofiles[item])
         frames = []
-        print(self.videofiles[item])
         label = self.videofiles[item].split("\\")[-2]
 
         f = 0
@@ -100,7 +99,7 @@ def video_transform(video, image_transform):
 def get_loader(h_dataroot, r_dataroot, batch_size):#, image_size, n_channels, image_batch, video_batch, video_length):
     image_transforms = transforms.Compose([
         Image.fromarray,
-        transforms.Resize(256),
+        transforms.CenterCrop(256),
         transforms.ToTensor(),
         # lambda x: x[:n_channels, ::],
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),

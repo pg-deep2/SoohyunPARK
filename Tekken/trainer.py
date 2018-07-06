@@ -70,8 +70,7 @@ class Trainer(object):
             for step, (h_video, h_label) in enumerate(self.h_loader):
                 h_video = Variable(h_video.cuda())
                 h_video = h_video.permute(0,2,1,3,4)
-
-                print(h_video.shape)
+                if h_video.shape[2] < 96: continue
 
                 self.model.zero_grad()
 
