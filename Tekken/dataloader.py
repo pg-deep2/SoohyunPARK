@@ -24,10 +24,11 @@ class HighlightVideoDataset(torch.utils.data.Dataset):
         frames = []
         label = self.videofiles[item].split("\\")[-2]
 
+        # reading video using cv2
         f = 0
         while True:
             ret, frame = cap.read()
-            if ret or f == 10:
+            if ret:
                 frame = torch.from_numpy(frame)
                 # HWC2CHW
                 frame = frame.permute(2, 0, 1)
@@ -58,10 +59,11 @@ class RawVideoDataset(torch.utils.data.Dataset):
         frames = []
         label = self.videofiles[item].split("\\")[-2]
 
+        # reading video using cv2
         f = 0
         while True:
             ret, frame = cap.read()
-            if ret or f == 10:
+            if ret:
                 frame = torch.from_numpy(frame)
                 # HWC2CHW
                 frame = frame.permute(2, 0, 1)
@@ -71,16 +73,23 @@ class RawVideoDataset(torch.utils.data.Dataset):
             else:
                 break
 
-        random_sec = random.randint(6, 8)
-        random_frame = np.random.choice(f, 12 * random_sec)  # 12 frames * (5,9) seconds
-        random_frame = list(set(random_frame))
-        random_frame.sort()
+        total_frames = f
+        # choose length of raw video [6,10]
+        if total_frames >= 12*10:
+            frame_len = random.randint(6,10)*12
 
+        # if video is shorter than 120 frames, [6, secs]
+        elif total_frames > 12 * 6:
+            frame_len = random.randint(6,total_frames//12)*12
 
+        else:
+            raise IndexError('Video is shorter than 6 seconds!')
+
+        # start frame: [0, (total frame - frame len))
+        random_start = random.randrange(total_frames - frame_len)
         out = np.concatenate(frames)
         out = out.reshape(-1, 3, 270, 480)
-        out = out[random_frame,:,:,:]
-
+        out = out[random_start : random_start+frame_len, : , : , :]
 
         return self.transforms(out), label
 

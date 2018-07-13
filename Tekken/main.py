@@ -37,7 +37,6 @@ def main(config):
 
     trainer = Trainer(config, h_loader, r_loader)
 
-    trainer.train()
 
 if __name__ == "__main__":
     config = get_config()

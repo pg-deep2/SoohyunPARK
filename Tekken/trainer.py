@@ -10,7 +10,7 @@ import torchvision.utils as vutils
 from torch.autograd import Variable
 import torch.optim as optim
 
-from models import model
+from models.model import resLstm
 
 def denorm(x):
     out = (x + 1) / 2
@@ -42,14 +42,34 @@ class Trainer(object):
         #     self.model.cuda()
 
     def load_model(self):
-        print("[*] Load models from {}...".format(self.outf))
+        if self.config.resnet_path != None:
+            print("[*] Loading models from {}...".format(self.config.resnet_path))
+            state_dict = torch.load(self.config.resnet_path)['state_dict']
+
+            from collections import OrderedDict
+            new_state_dict = OrderedDict()
+            for k, v in state_dict.items():
+                name = 'resnet.' + k[7:]  # remove "module." in pretrained model
+                new_state_dict[name] = v
+
+
+            self.model.load_state_dict(new_state_dict)
+
+
+            for param in self.model.named_parameters():
+
+                if "layer4" in param[0]:
+                    param[1].requires_grad = False
+                # Replace the last fully-connected layer
+                # Parameters of newly constructed modules have requires_grad=True by default
+            self.model.cuda()
 
 
     def build_model(self):
-        self.model = model.Discriminator().cuda()
+        self.model = resLstm()
 
 
-        if self.outf != None:
+        if self.config.resnet_path != None:
             self.load_model()
 
 
@@ -64,6 +84,8 @@ class Trainer(object):
                                    weight_decay=self.weight_decay)
 
         start_time = time.time()
+
+        self.model.train()
 
         for epoch in range(self.n_epochs):
 
