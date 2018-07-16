@@ -36,7 +36,7 @@ def main(config):
     h_loader, r_loader = get_loader(h_datapath, r_datapath, 1)
 
     trainer = Trainer(config, h_loader, r_loader)
-
+    trainer.train()
 
 if __name__ == "__main__":
     config = get_config()

@@ -10,7 +10,7 @@ import torchvision.utils as vutils
 from torch.autograd import Variable
 import torch.optim as optim
 
-from models.model import resLstm
+from models.C3D import C3D, GRU
 
 def denorm(x):
     out = (x + 1) / 2
@@ -42,71 +42,82 @@ class Trainer(object):
         #     self.model.cuda()
 
     def load_model(self):
-        if self.config.resnet_path != None:
-            print("[*] Loading models from {}...".format(self.config.resnet_path))
-            state_dict = torch.load(self.config.resnet_path)['state_dict']
+        self.p3d.load_state_dict(torch.load('C:\\Users\msi\Downloads\c3d.pickle'))
+        # p3d_net.cuda()
+        # print("before fine tuning:", p3d_net)
 
-            from collections import OrderedDict
-            new_state_dict = OrderedDict()
-            for k, v in state_dict.items():
-                name = 'resnet.' + k[7:]  # remove "module." in pretrained model
-                new_state_dict[name] = v
+        # FC layer 제거 및 pretrained layers' parameter 고정
+        fc_removed = list(self.p3d.children())[:-6]
 
+        _p3d_net = []
+        relu = nn.ReLU()
 
-            self.model.load_state_dict(new_state_dict)
+        for layer in fc_removed:
+            for param in layer.parameters():
+                param.requires_grad = False
+            if layer.__class__.__name__ == 'MaxPool3d':
+                _p3d_net.extend([layer, relu])
+            else:
+                _p3d_net.append(layer)
 
+        last_conv3d = nn.Conv3d(512, 512, kernel_size=(1, 7, 7), stride=(1, 1, 1), padding=(0, 0, 0))
+        _p3d_net.extend([last_conv3d, relu])
 
-            for param in self.model.named_parameters():
+        p3d_net = nn.Sequential(*_p3d_net).cuda()
 
-                if "layer4" in param[0]:
-                    param[1].requires_grad = False
-                # Replace the last fully-connected layer
-                # Parameters of newly constructed modules have requires_grad=True by default
-            self.model.cuda()
+        self.p3d = p3d_net
 
 
     def build_model(self):
-        self.model = resLstm()
+        self.p3d = C3D().cuda()
+        self.load_model()
 
-
-        if self.config.resnet_path != None:
-            self.load_model()
-
+        self.gru = GRU(self.p3d).cuda()
+        print("MODEL:")
+        print(self.gru)
 
     def train(self):
-        self.loss = nn.BCELoss()
-
         # if self.use_cuda:
         #     self.model.cuda()
 
         # create optimizers
-        opt_model = optim.Adam(self.model.parameters(), lr=self.lr, betas=(self.beta1, self.beta2),
-                                   weight_decay=self.weight_decay)
+        opt_model = optim.Adam(filter(lambda p: p.requires_grad,self.gru.parameters()),
+                               lr=self.lr, betas=(self.beta1, self.beta2),
+                               weight_decay=self.weight_decay)
 
         start_time = time.time()
 
-        self.model.train()
+        self.gru.train()
 
         for epoch in range(self.n_epochs):
 
-            for step, (h_video, h_label) in enumerate(self.h_loader):
+            for step, (h, r) in enumerate(zip(self.h_loader,self.r_loader)):
+                h_video, _ = h[0]
+                r_video, _ = r[0]
+                # highlight video
                 h_video = Variable(h_video.cuda())
-                h_video = h_video.permute(0,2,1,3,4)
-                if h_video.shape[2] < 96: continue
 
-                self.model.zero_grad()
+                self.gru.zero_grad()
 
-                output, fake_categ = self.model(h_video)
-                loss = self.loss(output+1e-10, Variable(torch.ones(output.size()).cuda()))
+                h_loss = self.gru(h_video)
 
-                loss.backward()
+                h_loss.backward()
+                opt_model.step()
+
+                # raw video
+                r_video = Variable(r_video.cuda())
+                self.gru.zero_grad()
+
+                r_loss = self.gru(r_video)
+
+                r_loss.backward()
                 opt_model.step()
 
                 step_end_time = time.time()
 
-                print('[%d/%d][%d/%d] - time: %.2f, loss: %.3f'
-                      % (epoch, self.n_epochs, step, len(self.h_loader), step_end_time - start_time,
-                         loss))
+                print('[%d/%d][%d/%d] - time: %.2f, h_loss: %.3f, r_loss: %.3f'
+                      % (epoch, self.n_epochs, step, min(len(self.h_loader),len(self.r_loader)),
+                         step_end_time - start_time, h_loss, r_loss))
 
                 if step % self.log_interval == 0:
                     pass

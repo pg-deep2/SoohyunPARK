@@ -93,6 +93,9 @@ class RawVideoDataset(torch.utils.data.Dataset):
 
         return self.transforms(out), label
 
+    def __len__(self):
+        return len(self.videofiles)
+
 def video_transform(video, image_transform):
     # apply image transform to every frame in a video
     vid = []
@@ -101,14 +104,14 @@ def video_transform(video, image_transform):
 
     vid = torch.stack(vid)
     # vid. 10, 3, 64, 64
-    # vid = vid.permute(1, 0, 2, 3)
+    vid = vid.permute(1, 0, 2, 3)
     # vid. 3, 10, 64, 64
     return vid
 
-def get_loader(h_dataroot, r_dataroot, batch_size):#, image_size, n_channels, image_batch, video_batch, video_length):
+def get_loader(h_dataroot, r_dataroot, batch_size=1):#, image_size, n_channels, image_batch, video_batch, video_length):
     image_transforms = transforms.Compose([
         Image.fromarray,
-        transforms.CenterCrop(256),
+        transforms.CenterCrop(270),
         transforms.ToTensor(),
         # lambda x: x[:n_channels, ::],
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),

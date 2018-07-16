@@ -17,6 +17,6 @@ parser.add_argument('--weight_decay', type=float, default=0.00001, help='weight_
 
 parser.add_argument('--cuda', action='store_true', help='enables cuda')
 parser.add_argument('--outf', default=None, help='folder to output images and videos ans model checkpoints')
-parser.add_argument('--resnet_path', default="C:\\Users\msi\Downloads\\resnet-101-kinetics.pth", help='path to pretrained resnet model')
+parser.add_argument('--resnet_path', default="'C:\\Users\msi\Downloads\c3d.pickle'", help='path to pretrained resnet model')
 def get_config():
     return parser.parse_args()
