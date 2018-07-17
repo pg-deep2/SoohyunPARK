@@ -18,10 +18,11 @@ def denorm(x):
 
 
 class Trainer(object):
-    def __init__(self, config, h_loader, r_loader):
+    def __init__(self, config, h_loader, r_loader, test_loader):
         self.config = config
         self.h_loader = h_loader
         self.r_loader = r_loader
+        self.test_loader = test_loader
 
         self.lr = config.lr
         self.beta1 = config.beta1
@@ -42,11 +43,11 @@ class Trainer(object):
         #     self.model.cuda()
 
     def load_model(self):
-        self.p3d.load_state_dict(torch.load('C:\\Users\msi\Downloads\c3d.pickle'))
+        self.p3d.load_state_dict(torch.load(self.config.pretrained_path))
         # p3d_net.cuda()
         # print("before fine tuning:", p3d_net)
 
-        # FC layer 제거 및 pretrained layers' parameter 고정
+        # FC layer removal & fixing pretrained layers' parameter
         fc_removed = list(self.p3d.children())[:-6]
 
         _p3d_net = []
@@ -60,8 +61,8 @@ class Trainer(object):
             else:
                 _p3d_net.append(layer)
 
-        last_conv3d = nn.Conv3d(512, 512, kernel_size=(1, 7, 7), stride=(1, 1, 1), padding=(0, 0, 0))
-        _p3d_net.extend([last_conv3d, relu])
+        # last_conv3d = nn.Conv3d(512, 512, kernel_size=(1, 7, 7), stride=(1, 1, 1), padding=(0, 0, 0))
+        # _p3d_net.extend([last_conv3d, relu])
 
         p3d_net = nn.Sequential(*_p3d_net).cuda()
 
@@ -90,16 +91,16 @@ class Trainer(object):
         self.gru.train()
 
         for epoch in range(self.n_epochs):
-
+            # common_len = min(len(self.h_loader),len(self.r_loader))
             for step, (h, r) in enumerate(zip(self.h_loader,self.r_loader)):
-                h_video, _ = h[0]
-                r_video, _ = r[0]
+                h_video = h
+                r_video = r
                 # highlight video
                 h_video = Variable(h_video.cuda())
 
                 self.gru.zero_grad()
 
-                h_loss = self.gru(h_video)
+                h_loss = Variable(self.gru(h_video).cuda(),requires_grad=True)
 
                 h_loss.backward()
                 opt_model.step()
@@ -108,7 +109,7 @@ class Trainer(object):
                 r_video = Variable(r_video.cuda())
                 self.gru.zero_grad()
 
-                r_loss = self.gru(r_video)
+                r_loss = Variable(self.gru(r_video).cuda(),requires_grad=True)
 
                 r_loss.backward()
                 opt_model.step()
@@ -116,15 +117,17 @@ class Trainer(object):
                 step_end_time = time.time()
 
                 print('[%d/%d][%d/%d] - time: %.2f, h_loss: %.3f, r_loss: %.3f'
-                      % (epoch, self.n_epochs, step, min(len(self.h_loader),len(self.r_loader)),
+                      % (epoch+1, self.n_epochs, step+1, min(len(self.h_loader),len(self.r_loader)),
                          step_end_time - start_time, h_loss, r_loss))
 
                 if step % self.log_interval == 0:
+                    # for step, t in enumerate(self.test_loader):
+                    #     t_video = t[0]
+                    #     t_label = t[1]
+                    #
+                    #
                     pass
 
             if epoch % self.checkpoint_step == 0:
                 pass
 
-    def _get_variable(self, inputs):
-        out = Variable(inputs.cuda())
-        return out

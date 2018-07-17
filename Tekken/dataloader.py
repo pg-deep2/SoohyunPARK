@@ -25,26 +25,24 @@ class HighlightVideoDataset(torch.utils.data.Dataset):
         label = self.videofiles[item].split("\\")[-2]
 
         # reading video using cv2
-        f = 0
         while True:
             ret, frame = cap.read()
             if ret:
-                frame = torch.from_numpy(frame)
                 # HWC2CHW
-                frame = frame.permute(2, 0, 1)
+                frame = frame.transpose(2, 0, 1)
                 frames.append(frame)
                 # print(frame)
-                f += 1
             else:
                 break
 
         out = np.concatenate(frames)
         out = out.reshape(-1, 3, 270, 480)
 
-        return self.transforms(out), label
+        return self.transforms(out)
 
     def __len__(self):
         return len(self.videofiles)
+
 
 class RawVideoDataset(torch.utils.data.Dataset):
     def __init__(self, dataroot, transform=None):
@@ -64,9 +62,8 @@ class RawVideoDataset(torch.utils.data.Dataset):
         while True:
             ret, frame = cap.read()
             if ret:
-                frame = torch.from_numpy(frame)
                 # HWC2CHW
-                frame = frame.permute(2, 0, 1)
+                frame = frame.transpose(2, 0, 1)
                 frames.append(frame)
                 # print(frame)
                 f += 1
@@ -86,10 +83,52 @@ class RawVideoDataset(torch.utils.data.Dataset):
             raise IndexError('Video is shorter than 6 seconds!')
 
         # start frame: [0, (total frame - frame len))
-        random_start = random.randrange(total_frames - frame_len)
+        random_start = random.randint(0,total_frames - frame_len)
         out = np.concatenate(frames)
         out = out.reshape(-1, 3, 270, 480)
         out = out[random_start : random_start+frame_len, : , : , :]
+
+        return self.transforms(out)
+
+    def __len__(self):
+        return len(self.videofiles)
+
+class TestDataset(torch.utils.data.Dataset):
+    def __init__(self, dataroot, transform=None):
+        self.dataroot = dataroot
+
+        videofiles = os.listdir(dataroot)
+        self.videofiles = [os.path.join(self.dataroot,v) for v in videofiles if os.path.splitext(v)[-1]=='.mp4']
+        self.textfiles = [os.path.join(self.dataroot,v) for v in videofiles if os.path.splitext(v)[-1]=='.txt']
+
+    def __getitem__(self, item):
+        cap = cv2.VideoCapture(self.videofiles[item])
+        frames = []
+
+        filename = os.path.split(self.videofiles[item])[-1]
+        h_start = filename.index("(")
+        h_end = filename.index(")")
+        h_frames = filename[h_start+1 : h_end]
+
+        # reading video using cv2
+        while True:
+            ret, frame = cap.read()
+            if ret:
+                # HWC2CHW
+                frame = frame.transpose(2, 0, 1)
+                frames.append(frame)
+                # print(frame)
+            else:
+                break
+
+        out = np.concatenate(frames)
+        out = out.reshape(-1, 3, 270, 480)
+
+        label = np.zeros(out.shape[0])
+
+        if "," in h_frames:
+            s,e = h_frames.split(',')
+            label[int(s):int(e)] = 1.
 
         return self.transforms(out), label
 
@@ -108,7 +147,7 @@ def video_transform(video, image_transform):
     # vid. 3, 10, 64, 64
     return vid
 
-def get_loader(h_dataroot, r_dataroot, batch_size=1):#, image_size, n_channels, image_batch, video_batch, video_length):
+def get_loader(h_dataroot, r_dataroot, test_dataroot, batch_size=1):
     image_transforms = transforms.Compose([
         Image.fromarray,
         transforms.CenterCrop(270),
@@ -135,12 +174,13 @@ def get_loader(h_dataroot, r_dataroot, batch_size=1):#, image_size, n_channels, 
     # for f in range(0, r_video.shape[0]):
     #     viz.image(r_video[f,:,:,:], win="random video", opts={'title':'RANDOM'})
     #     time.sleep(0.01)
-
+    test_dataset = TestDataset(test_dataroot, video_transforms)
 
     h_loader = DataLoader(h_dataset, batch_size=batch_size, drop_last=True, shuffle=True)
     r_loader = DataLoader(r_dataset, batch_size=batch_size, drop_last=True, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, drop_last=True, shuffle=False)
 
-    return h_loader, r_loader
+    return h_loader, r_loader, test_loader
 if __name__=="__main__":
     get_loader("C:\\Users\msi\Desktop\Soohyun\프로그라피\\2기_디비디비딥\VideoData\HV",
                "C:\\Users\msi\Desktop\Soohyun\프로그라피\\2기_디비디비딥\VideoData\RV", 1)

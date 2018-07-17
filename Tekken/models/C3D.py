@@ -84,12 +84,12 @@ class GRU(nn.Module):
         self.c3d = c3d
 
         # 2048 -> output size[1] of resnet
-        self.gru = nn.GRUCell(27, 10)
+        self.gru_encoder = nn.GRUCell(243, 20)
         self.relu = nn.ReLU()
-        self.ae = nn.Sequential(nn.Linear(5120,100),
-                                nn.ReLU(),
-                                nn.Linear(100,5120),
-                                nn.Tanh())
+        self.decoder = nn.Sequential(nn.Linear(20,243),
+                                     nn.ReLU())
+        self.temporal_pool = nn.MaxPool1d(4,4,0)
+
 
         self.mseLoss = nn.MSELoss()
 
@@ -101,34 +101,37 @@ class GRU(nn.Module):
 
         loss_list = []
 
-        e_t = torch.FloatTensor(512, 10).normal_().cuda()
+        e_t = torch.FloatTensor(128, 20).normal_().cuda()
 
+        step = 0
         while end < input.shape[2]:
             x = input[:, :, start:end, :, :]
             # x.shape: 1, 3, 96, h, w
             h = self.c3d(x)
+            # h.shape: 1, 512, 3, 9, 9
             h = h.squeeze()
-            h = h.view(512,-1)
-            # h.shape: 1,512, 27
+            h = h.view(1, 512, -1).permute(0,2,1)
+            h = self.temporal_pool(h).permute(0,2,1).squeeze()
+            # print("h",h.shape)
+            # h.shape: 128, 243
 
-            print("h",h.shape)
 
-            e_t = (self.gru(h.cuda(), e_t))
+            e_t = (self.gru_encoder(h.cuda(), e_t))
+            # print("et",e_t.shape)
+            # e_t.shape: 128,20
 
-            print("et",e_t.shape)
-            # e_t.shape: 512,128
+            feature_out = self.decoder(e_t)
+            # print("f",feature_out.shape)
+            # f.shape: 128, 243
 
-            feature_in = e_t.contiguous().view(1,-1)
-
-            feature_out = self.ae(feature_in)
-            print("fo",feature_out.shape)
-
-            loss = torch.mean(torch.abs(feature_out - feature_in))
+            # loss = torch.mean(torch.abs(feature_out - h))
+            loss = self.mseLoss(feature_out, h)
             loss_list.append(loss.data)
 
             start += 6
             end += 6
+            step += 1
 
-        total_loss = sum(loss_list)
+        total_loss = sum(loss_list) / step
 
         return total_loss

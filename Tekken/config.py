@@ -2,7 +2,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--dataroot', default='C:\\Users\msi\Desktop\Soohyun\프로그라피\\2기_디비디비딥\VideoData', help='path to dataset')
+parser.add_argument('--dataroot', default='C:\\Users\msi\Desktop\Soohyun\프로그라피\\2기_디비디비딥\VideoData\PROGRAPHY DATA_ver2', help='path to dataset')
 
 parser.add_argument('--n_epochs', type=int, default=10, help='number of epochs')
 parser.add_argument('--log_interval', type=int, default=100, help='save valid gif and image')
@@ -16,7 +16,7 @@ parser.add_argument('--weight_decay', type=float, default=0.00001, help='weight_
 
 
 parser.add_argument('--cuda', action='store_true', help='enables cuda')
-parser.add_argument('--outf', default=None, help='folder to output images and videos ans model checkpoints')
-parser.add_argument('--resnet_path', default="'C:\\Users\msi\Downloads\c3d.pickle'", help='path to pretrained resnet model')
+parser.add_argument('--outf', default=None, help='folder model checkpoints')
+parser.add_argument('--pretrained_path', default="C:\\Users\msi\Downloads\c3d.pickle", help='path to pretrained resnet model')
 def get_config():
     return parser.parse_args()
