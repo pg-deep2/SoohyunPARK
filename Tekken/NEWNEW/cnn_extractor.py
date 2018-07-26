@@ -113,6 +113,8 @@ class GRU(nn.Module):
         self.gru1 = nn.LSTM(256, 16, batch_first=True)
         self.fc = nn.Sequential(nn.Linear(16,1),
                                 nn.Sigmoid())
+
+
         # self.relu = nn.ReLU()
         # self.gru2 = nn.GRU(10,1)
 
@@ -120,13 +122,12 @@ class GRU(nn.Module):
         #self.sig = nn.Sigmoid()
 
     def forward(self, input):
-        # print(input.shape)
+        input = input.view(-1,3,299,299)
         h = self.c2d(input)
-        # print(h.shape)
-        h = h.view(1,20,256)
+        h = h.view(1,-1,256)
         # print(h.shape)
         h,_ = self.gru1(h)
-        # print(h.shape) # 10, 2, 16
+        # print(h.shape) # 1, 16
         h = nn.ReLU()(h)
         # print(h.shape)
         h = h.view(-1,16)

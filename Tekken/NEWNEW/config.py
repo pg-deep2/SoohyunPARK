@@ -2,7 +2,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--dataroot', default='C:\\Users\msi\Desktop\Soohyun\프로그라피\\2기_디비디비딥\VideoData\Images\Train', help='path to dataset')
+parser.add_argument('--dataroot', default='C:\\Users\msi\Desktop\Soohyun\프로그라피\\2기_디비디비딥\VideoData\VER3', help='path to dataset')
 
 parser.add_argument('--n_epochs', type=int, default=100, help='number of epochs')
 parser.add_argument('--n_steps', type=int, help='steps per epochs')

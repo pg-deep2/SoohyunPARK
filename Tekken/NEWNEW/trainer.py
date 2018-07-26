@@ -36,36 +36,14 @@ class Trainer(object):
         self.c2d.load_state_dict(torch.load('cnn.pkl'))  # load pre-trained cnn extractor
 
 
-        # for l,p in self.c2d.named_parameters():
-        #     print(l)
-
-        # self.c2d = nn.Sequential(*list(self.c2d.children())[:-1])
         for l,p in self.c2d.named_parameters():
 
             p.requires_grad = False
-            # print(l,p.requires_grad)
 
-        # c2d_layer = list(self.c2d.children())
-        # fixed_layers = []
-        # 
-        # for param in self.c2d.parameters():
-        #     param.requires_grad = False
-        #     print(param.requires_grad)
-            # no trainable parameters
-            # fixed_layers.append(layer)
-        # 
-        # self.c2d = nn.Sequential(*fixed_layers).cuda()
-        
-        # 여기서 c2d fix 시키게 어떻게 함..? ㅠㅠㅠㅠㅠ
 
         self.gru = GRU(self.c2d).cuda()
-        # for l,p in self.c2d.named_parameters():
-        #     if "c2d" in l:
-        #         p.requires_grad = False
-        #         print(l,p.requires_grad)
-        #     else:
-        #         # p.requires_grad = True
-        #         print(l)
+
+
 
 
     def train(self):
@@ -81,57 +59,38 @@ class Trainer(object):
 
         criterion = nn.BCELoss()
 
-        print(list(self.gru.named_parameters()))
-
         for epoch in range(self.n_epochs):
             epoch_loss = []
             for step, (h, r) in enumerate(zip(self.h_loader, self.r_loader)):
                 h_video = h
                 r_video = r
-                self.vis.img("h",h_video)
-                self.vis.img("r", r_video)
+
+                # self.vis.img("h",h_video)
+                # self.vis.img("r", r_video)
 
                 # highlight video
-                h_video = Variable(h_video.cuda())
-                r_video = Variable(r_video.cuda())
+                h_video = Variable(h_video).cuda()
+                r_video = Variable(r_video).cuda()
+
 
                 self.gru.zero_grad()
 
-                predicted = self.gru(h_video.cuda())  # predicted snippet's score
-                # print("Predicted:", predicted)
-                # print("Predicted shape:", predicted.shape)
-                #print(predicted)
-                target = Variable(torch.ones(predicted.shape, dtype=torch.float32).cuda())
-                # print("Target:", target)
-                # print("Target shape:", target.shape)
-                # target = torch.from_numpy(
-                #    np.ones([len(predicted)], dtype=np.float)).cuda()  # highlight videos => target:1
-                h_loss = Variable(criterion(predicted, target).cuda(), requires_grad=True)  # compute loss
+                predicted = self.gru(h_video)
 
-                for n, p in self.gru.named_parameters():
-                    if 'c2d' not in n:
-                        print(n)
-                        print(p)
-                    # print(n,p.requires_grad)
-                print()
-                print()
+                target = torch.ones(predicted.shape, dtype=torch.float32).cuda()
+
+                h_loss = criterion(predicted, target)  # compute loss
+
                 h_loss.backward()
                 opt.step()
 
-                for n, p in self.gru.named_parameters():
-                    if 'c2d' not in n:
-                        print(p)
-                    # print(n,p.requires_grad)
-                print()
-                print()
-
 
                 self.gru.zero_grad()
 
-                predicted = self.gru(r_video.cuda())  # predicted snippet's score
+                predicted = self.gru(r_video)  # predicted snippet's score
 
-                target = Variable(torch.zeros(predicted.shape, dtype=torch.float32).cuda())
-                r_loss = Variable(criterion(predicted, target), requires_grad=True)  # compute loss
+                target = torch.zeros(predicted.shape, dtype=torch.float32).cuda()
+                r_loss = criterion(predicted, target)  # compute loss
 
                 r_loss.backward()
                 opt.step()
