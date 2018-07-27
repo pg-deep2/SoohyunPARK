@@ -6,65 +6,7 @@ from torch.autograd import Variable
 from torch.utils.data import Dataset
 from PIL import Image
 import os
-
 import numpy as np
-
-# Hyper Parameters
-num_epochs = 100
-batch_size = 20
-learning_rate = 0.0001
-
-
-# class D(Dataset):
-#     def __init__(self, root_dir, transform=None):
-#
-#         self.dataroot = root_dir
-#         self.im_files = os.listdir(self.dataroot)
-#
-#         self.transforms = transform if transform is not None else lambda x: x
-#
-#     def __len__(self):
-#         return len(self.im_files)
-#
-#     def __getitem__(self, idx):
-#         im = Image.open(os.path.join(self.dataroot,self.im_files[idx]))
-#
-#
-#         return self.transforms(im)
-#
-# image_transforms = transforms.Compose([
-#         transforms.Resize((299,299)),
-#         transforms.ToTensor(),
-#         # lambda x: x[:n_channels, ::],
-#         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-#     ])
-#
-# dataroot = "C:\\Users\msi\Desktop\Soohyun\프로그라피\\2기_디비디비딥\VideoData\Images\Train"
-#
-# r_dset = D(dataroot+"\RV",image_transforms)
-# h_dset = D(dataroot+"\HV",image_transforms)
-#
-# dataroot = "C:\\Users\msi\Desktop\Soohyun\프로그라피\\2기_디비디비딥\VideoData\Images\Test"
-# t_r_dset = D(dataroot+"\RV_filtered",image_transforms)
-# t_h_dset = D(dataroot+"\HV_filtered",image_transforms)
-#
-#
-# # Data Loader (Input Pipeline)
-# r_l = torch.utils.data.DataLoader(dataset=r_dset,
-#                                            batch_size=batch_size,
-#                                            shuffle=True)
-# h_l = torch.utils.data.DataLoader(dataset=h_dset,
-#                                            batch_size=batch_size,
-#                                            shuffle=True)
-#
-# t_r_l = torch.utils.data.DataLoader(dataset=t_r_dset,
-#                                           batch_size=batch_size,
-#                                           shuffle=False)
-#
-# t_h_l = torch.utils.data.DataLoader(dataset=t_h_dset,
-#                                           batch_size=batch_size,
-#                                           shuffle=False)
-# CNN Model (2 conv layer)
 
 
 class CNN(nn.Module):
@@ -99,7 +41,6 @@ class CNN(nn.Module):
     def forward(self, x):
         out = self.layer1(x)
         out = self.layer2(out)
-        # 24, 256, 1, 1
         # print(out.shape)
         # out = self.fc(out)
         # out = self.sig(out)
@@ -111,9 +52,10 @@ class GRU(nn.Module):
 
         self.c2d = cnn
         self.gru1 = nn.LSTM(256, 16, batch_first=True)
-        self.fc = nn.Sequential(nn.Linear(16,1),
-                                nn.Sigmoid())
-
+        self.fc = nn.Sequential(nn.Linear(16,256),
+                                nn.ReLU()
+                                )
+        self.mseloss = nn.MSELoss()
 
         # self.relu = nn.ReLU()
         # self.gru2 = nn.GRU(10,1)
@@ -123,17 +65,20 @@ class GRU(nn.Module):
 
     def forward(self, input):
         input = input.view(-1,3,299,299)
-        h = self.c2d(input)
-        h = h.view(1,-1,256)
+        target = self.c2d(input) # 1, 256, 1, 1
+        h = target.view(1,-1,256) # 1, 1, 256
         # print(h.shape)
-        h,_ = self.gru1(h)
-        # print(h.shape) # 1, 16
+        h,_ = self.gru1(h) # 1, 256, 1, 1
+
         h = nn.ReLU()(h)
         # print(h.shape)
         h = h.view(-1,16)
         h = self.fc(h)
 
-        return h
+        target = target.squeeze()
+        loss = self.mseloss(h,target)
+
+        return loss
 
 
 

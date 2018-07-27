@@ -45,7 +45,6 @@ class HighlightVideoDataset(torch.utils.data.Dataset):
 
         out = np.concatenate(frames)
         out = out.reshape(-1,3,270,480)
-        print(out.shape)
 
         return self.transforms(out)
 
@@ -133,7 +132,7 @@ class TestDataset(torch.utils.data.Dataset):
             s, e = h_frames.split(',')
             label[int(s):int(e)] = 1.
 
-        return self.transforms(out), label
+        return self.transforms(out), label, filename
 
     def __len__(self):
         return len(self.videofiles)
@@ -153,7 +152,8 @@ def video_transform(video, image_transform):
 def get_loader(h_dataroot, r_dataroot, t_dataroot, batch_size=1):
     image_transforms = transforms.Compose([
         Image.fromarray,
-        transforms.Resize((299,299)),
+        transforms.Resize((350,350)),
+        transforms.RandomCrop(299,),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ])

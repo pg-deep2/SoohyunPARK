@@ -38,9 +38,9 @@ def main(config):
     h_loader, r_loader, t_loader = get_loader(h_datapath, r_datapath, t_datapath)
     config.n_steps = min(len(h_loader), len(r_loader))
 
-    trainer = Trainer(config, h_loader, r_loader)
+    trainer = Trainer(config, h_loader, r_loader, t_loader)
     trainer.train()
-
+    # trainer.save_npy(t_loader)
 
 if __name__ == "__main__":
     config = get_config()
